@@ -3,23 +3,25 @@ package com.tiffinocuisine.cuisine.Entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "cuisines")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Cuisine {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "cuisine_id")
     private Long cuisineId;
+
+    @Column(nullable = false)
     private String name;
+
     private String description;
 
-    // Custom constructor for DTO mapping
-    public Cuisine(String name, String description) {
-        this.name = name;
-        this.description = description;
-    }
+    @OneToMany(mappedBy = "cuisine", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Meal> meals;
 }
