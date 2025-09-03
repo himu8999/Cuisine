@@ -1,62 +1,137 @@
 package com.tiffinocuisine.cuisine.Services;
 
 
+import com.tiffinocuisine.cuisine.DTOs.MealDTO;
+import com.tiffinocuisine.cuisine.Entities.Cuisine;
 import com.tiffinocuisine.cuisine.Entities.Meal;
+import com.tiffinocuisine.cuisine.Repository.CuisineRepository;
 import com.tiffinocuisine.cuisine.Repository.MealRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class MealService {
 
-        private final MealRepository mealRepository;
+        @Autowired
+        private MealRepository mealRepository;
 
         @Autowired
-        public MealService(MealRepository mealRepository) {
-            this.mealRepository = mealRepository;
+        private CuisineRepository cuisineRepository;
+
+        // ✅ Create Meal
+        public MealDTO createMeal(MealDTO dto) {
+            Cuisine cuisine = cuisineRepository.findById(dto.getCuisineId())
+                    .orElseThrow(() -> new RuntimeException("Cuisine not found with id: " + dto.getCuisineId()));
+
+            Meal meal = new Meal();
+            meal.setName(dto.getName());
+            meal.setDescription(dto.getDescription());
+            meal.setPrice(dto.getPrice());
+            meal.setNutritionInfo(dto.getNutritionInfo());
+            meal.setAllergens(dto.getAllergens());
+            meal.setCuisine(cuisine);
+
+            Meal savedMeal = mealRepository.save(meal);
+
+            MealDTO response = new MealDTO();
+            response.setMealId(savedMeal.getMealId());
+            response.setCuisineId(savedMeal.getCuisine().getCuisineId());
+            response.setName(savedMeal.getName());
+            response.setDescription(savedMeal.getDescription());
+            response.setPrice(savedMeal.getPrice());
+            response.setNutritionInfo(savedMeal.getNutritionInfo());
+            response.setAllergens(savedMeal.getAllergens());
+
+            return response;
         }
 
-        // Create or Save Meal
-        public Meal saveMeal(Meal meal) {
-            return mealRepository.save(meal);
+        // ✅ Get All Meals
+        public List<MealDTO> getAllMeals() {
+            return mealRepository.findAll().stream().map(meal -> {
+                MealDTO dto = new MealDTO();
+                dto.setMealId(meal.getMealId());
+                dto.setCuisineId(meal.getCuisine().getCuisineId());
+                dto.setName(meal.getName());
+                dto.setDescription(meal.getDescription());
+                dto.setPrice(meal.getPrice());
+                dto.setNutritionInfo(meal.getNutritionInfo());
+                dto.setAllergens(meal.getAllergens());
+                return dto;
+            }).toList();
         }
 
-        // Get All Meals
-        public List<Meal> getAllMeals() {
-            return mealRepository.findAll();
+        // ✅ Get Meal by ID
+        public MealDTO getMealById(Long id) {
+            Meal meal = mealRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Meal not found with id: " + id));
+
+            MealDTO dto = new MealDTO();
+            dto.setMealId(meal.getMealId());
+            dto.setCuisineId(meal.getCuisine().getCuisineId());
+            dto.setName(meal.getName());
+            dto.setDescription(meal.getDescription());
+            dto.setPrice(meal.getPrice());
+            dto.setNutritionInfo(meal.getNutritionInfo());
+            dto.setAllergens(meal.getAllergens());
+            return dto;
         }
 
-        // Get Meal by ID
-        public Optional<Meal> getMealById(Long mealId) {
-            return mealRepository.findById(mealId);
-        }
+        // ✅ Update Meal
+        public MealDTO updateMeal(Long id, MealDTO dto) {
+            Meal meal = mealRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Meal not found with id: " + id));
 
-        // Get Meals by Cuisine ID
-        public List<Meal> getMealsByCuisineId(Long cuisineId) {
-            return mealRepository.findByCuisineCuisineId(cuisineId);
-        }
+            meal.setName(dto.getName());
+            meal.setDescription(dto.getDescription());
+            meal.setPrice(dto.getPrice());
+            meal.setNutritionInfo(dto.getNutritionInfo());
+            meal.setAllergens(dto.getAllergens());
 
-        // Update Meal
-        public Meal updateMeal(Long mealId, Meal updatedMeal) {
-            return mealRepository.findById(mealId).map(meal -> {
-                meal.setName(updatedMeal.getName());
-                meal.setDescription(updatedMeal.getDescription());
-                meal.setPrice(updatedMeal.getPrice());
-                meal.setNutritionInfo(updatedMeal.getNutritionInfo());
-                meal.setAllergens(updatedMeal.getAllergens());
-                return mealRepository.save(meal);
-            }).orElseThrow(() -> new RuntimeException("Meal not found with id " + mealId));
-        }
-
-        // Delete Meal
-        public void deleteMeal(Long mealId) {
-            if (!mealRepository.existsById(mealId)) {
-                throw new RuntimeException("Meal not found with id " + mealId);
+            if (dto.getCuisineId() != null && !dto.getCuisineId().equals(meal.getCuisine().getCuisineId())) {
+                Cuisine cuisine = cuisineRepository.findById(dto.getCuisineId())
+                        .orElseThrow(() -> new RuntimeException("Cuisine not found with id: " + dto.getCuisineId()));
+                meal.setCuisine(cuisine);
             }
-            mealRepository.deleteById(mealId);
+
+            Meal updatedMeal = mealRepository.save(meal);
+
+            MealDTO updatedDTO = new MealDTO();
+            updatedDTO.setMealId(updatedMeal.getMealId());
+            updatedDTO.setCuisineId(updatedMeal.getCuisine().getCuisineId());
+            updatedDTO.setName(updatedMeal.getName());
+            updatedDTO.setDescription(updatedMeal.getDescription());
+            updatedDTO.setPrice(updatedMeal.getPrice());
+            updatedDTO.setNutritionInfo(updatedMeal.getNutritionInfo());
+            updatedDTO.setAllergens(updatedMeal.getAllergens());
+
+            return updatedDTO;
         }
 
-}
+        // ✅ Delete Meal
+        public void deleteMeal(Long id) {
+            if (!mealRepository.existsById(id)) {
+                throw new RuntimeException("Meal not found with id: " + id);
+            }
+            mealRepository.deleteById(id);
+        }
+
+        // ✅ Get Meals by Cuisine ID
+        public List<MealDTO> getMealsByCuisine(Long cuisineId) {
+            List<Meal> meals = mealRepository.findByCuisine_CuisineId(cuisineId);
+
+            return meals.stream().map(meal -> {
+                MealDTO dto = new MealDTO();
+                dto.setMealId(meal.getMealId());
+                dto.setCuisineId(meal.getCuisine().getCuisineId());
+                dto.setName(meal.getName());
+                dto.setDescription(meal.getDescription());
+                dto.setPrice(meal.getPrice());
+                dto.setNutritionInfo(meal.getNutritionInfo());
+                dto.setAllergens(meal.getAllergens());
+                return dto;
+            }).toList();
+        }
+    }
+

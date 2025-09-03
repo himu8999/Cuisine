@@ -22,6 +22,8 @@ public class Meal {
 
     private String description;
 
+    private String category;
+
     private double price;
 
     private String nutritionInfo;

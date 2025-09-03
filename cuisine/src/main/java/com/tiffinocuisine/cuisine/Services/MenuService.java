@@ -2,98 +2,121 @@ package com.tiffinocuisine.cuisine.Services;
 
 
 import com.tiffinocuisine.cuisine.DTOs.MenuDTO;
+import com.tiffinocuisine.cuisine.Entities.Meal;
 import com.tiffinocuisine.cuisine.Entities.Menu;
+import com.tiffinocuisine.cuisine.Repository.MealRepository;
 import com.tiffinocuisine.cuisine.Repository.MenuRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class MenuService {
 
-        @Autowired
-        private MenuRepository menuRepository;
+    @Autowired
+    private MenuRepository menuRepository;
 
-        // ✅ Convert Entity to DTO
-        private MenuDTO convertToDTO(Menu menu) {
-            MenuDTO dto = new MenuDTO();
-            dto.setMenuId(menu.getMenuId());
-            dto.setMenuName(menu.getMenuName());
-            dto.setDate(menu.getDate());
-            dto.setKitchenId(menu.getKitchenId());
-            return dto;
-        }
+    @Autowired
+    private MealRepository mealRepository;
 
-        // ✅ Convert DTO to Entity
-        private Menu convertToEntity(MenuDTO dto) {
-            Menu menu = new Menu();
-            menu.setMenuId(dto.getMenuId());
-            menu.setMenuName(dto.getMenuName());
-            menu.setDate(dto.getDate());
-            menu.setKitchenId(dto.getKitchenId());
-            return menu;
-        }
+    // ✅ Create Menu
+    public MenuDTO createMenu(MenuDTO dto) {
+        Menu menu = new Menu();
+        menu.setDate(dto.getDate());
+        menu.setKitchenId(dto.getKitchenId());
+        menu.setAvailableQty(dto.getAvailableQty());
 
-        // ✅ Get all menus
-        public List<MenuDTO> getAllMenus() {
-            return menuRepository.findAll().stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-        }
+        // Fetch meals by IDs and set to menu
+        List<Meal> meals = mealRepository.findAllById(dto.getMealIds());
+        menu.setMeals(meals);
 
-        // ✅ Get menu by ID
-        public MenuDTO getMenuById(Long id) {
-            Optional<Menu> menuOpt = menuRepository.findById(id);
-            return menuOpt.map(this::convertToDTO).orElse(null);
-        }
+        Menu savedMenu = menuRepository.save(menu);
 
-        // ✅ Get menus by kitchenId
-        public List<MenuDTO> getMenusByKitchenId(Long kitchenId) {
-            return menuRepository.findByKitchenId(kitchenId).stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-        }
+        MenuDTO response = new MenuDTO();
+        response.setMenuId(savedMenu.getMenuId());
+        response.setDate(savedMenu.getDate());
+        response.setKitchenId(savedMenu.getKitchenId());
+        response.setAvailableQty(savedMenu.getAvailableQty());
+        response.setMealIds(savedMenu.getMeals().stream().map(Meal::getMealId).toList());
 
-        // ✅ Get menus by date
-        public List<MenuDTO> getMenusByDate(String date) {
-            return menuRepository.findByDate(date).stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-        }
-
-        // ✅ Create menu
-        public MenuDTO createMenu(MenuDTO dto) {
-            Menu menu = convertToEntity(dto);
-            Menu savedMenu = menuRepository.save(menu);
-            return convertToDTO(savedMenu);
-        }
-
-        // ✅ Update menu
-        public MenuDTO updateMenu(Long id, MenuDTO dto) {
-            Optional<Menu> menuOpt = menuRepository.findById(id);
-            if (menuOpt.isPresent()) {
-                Menu menu = menuOpt.get();
-                menu.setMenuName(dto.getMenuName());
-                menu.setDate(dto.getDate());
-                menu.setKitchenId(dto.getKitchenId());
-                Menu updatedMenu = menuRepository.save(menu);
-                return convertToDTO(updatedMenu);
-            }
-            return null;
-        }
-
-        // ✅ Delete menu
-        public boolean deleteMenu(Long id) {
-            if (menuRepository.existsById(id)) {
-                menuRepository.deleteById(id);
-                return true;
-            }
-            return false;
-        }
+        return response;
     }
 
+    // ✅ Get All Menus
+    public List<MenuDTO> getAllMenus() {
+        return menuRepository.findAll().stream().map(menu -> {
+            MenuDTO dto = new MenuDTO();
+            dto.setMenuId(menu.getMenuId());
+            dto.setDate(menu.getDate());
+            dto.setKitchenId(menu.getKitchenId());
+            dto.setAvailableQty(menu.getAvailableQty());
+            dto.setMealIds(menu.getMeals().stream().map(Meal::getMealId).toList());
+            return dto;
+        }).toList();
+    }
 
+    // ✅ Get Menu by ID
+    public MenuDTO getMenuById(Long id) {
+        Menu menu = menuRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Menu not found with id: " + id));
+
+        MenuDTO dto = new MenuDTO();
+        dto.setMenuId(menu.getMenuId());
+        dto.setDate(menu.getDate());
+        dto.setKitchenId(menu.getKitchenId());
+        dto.setAvailableQty(menu.getAvailableQty());
+        dto.setMealIds(menu.getMeals().stream().map(Meal::getMealId).toList());
+
+        return dto;
+    }
+
+    // ✅ Update Menu
+    public MenuDTO updateMenu(Long id, MenuDTO dto) {
+        Menu menu = menuRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Menu not found with id: " + id));
+
+        menu.setDate(dto.getDate());
+        menu.setKitchenId(dto.getKitchenId());
+        menu.setAvailableQty(dto.getAvailableQty());
+
+        if (dto.getMealIds() != null && !dto.getMealIds().isEmpty()) {
+            List<Meal> meals = mealRepository.findAllById(dto.getMealIds());
+            menu.setMeals(meals);
+        }
+
+        Menu updatedMenu = menuRepository.save(menu);
+
+        MenuDTO updatedDTO = new MenuDTO();
+        updatedDTO.setMenuId(updatedMenu.getMenuId());
+        updatedDTO.setDate(updatedMenu.getDate());
+        updatedDTO.setKitchenId(updatedMenu.getKitchenId());
+        updatedDTO.setAvailableQty(updatedMenu.getAvailableQty());
+        updatedDTO.setMealIds(updatedMenu.getMeals().stream().map(Meal::getMealId).toList());
+
+        return updatedDTO;
+    }
+
+    // ✅ Delete Menu
+    public void deleteMenu(Long id) {
+        if (!menuRepository.existsById(id)) {
+            throw new RuntimeException("Menu not found with id: " + id);
+        }
+        menuRepository.deleteById(id);
+    }
+
+    // ✅ Get Menus by Kitchen ID
+    public List<MenuDTO> getMenusByKitchen(Long kitchenId) {
+        List<Menu> menus = menuRepository.findByKitchenId(kitchenId);
+
+        return menus.stream().map(menu -> {
+            MenuDTO dto = new MenuDTO();
+            dto.setMenuId(menu.getMenuId());
+            dto.setDate(menu.getDate());
+            dto.setKitchenId(menu.getKitchenId());
+            dto.setAvailableQty(menu.getAvailableQty());
+            dto.setMealIds(menu.getMeals().stream().map(Meal::getMealId).toList());
+            return dto;
+        }).toList();
+    }
 }
